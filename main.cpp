@@ -102,25 +102,37 @@ int main(){
                 box.width = statsMat.at<int>(i,2);
                 box.height = statsMat.at<int>(i,3);
                 //x=174,y=35为手工标记出水口
-                double distance = sqrt(pow((box.x - 174),2)+pow((box.y - 35),2));
+                double distance = sqrt(pow((box.x - 180),2)+pow((box.y - 35),2));
                 //当欧几里得距离小于10时确定为水流的连通域
                 if(distance < 10){
+                    box.x = 180;
+                    box.y = 35;
                     rectangle(src,box,CV_RGB(0,255,0),1,8,0);
-
-
-
-
-
+                    double k = box.height / pow(box.width,2);
+                    // cout << "height:" <<box.height << endl;
+                    // cout << "width:" << box.width << endl;
+                    // cout << "k:" << k << endl;
+                    // cout << "---------------------"<< endl;
+                    for(int x=0;x<frame_width-box.x;x++){
+                        int y = box.y + k*pow(x,2);
+                        // cout << "Y:" << y << endl;
+                        if(y > frame_height){
+                            break;
+                        }
+                        else{
+                            circle(src,Point(box.x + x,y),1,Scalar(255, 0, 0),1);
+                        }   
+                    }
                 }
             }
             //---------------------水流识别---------------------
 
             
             imshow("src",src);
-            imshow("redMask",mask);
-            imshow("test",subMat_Fire);
+            // imshow("redMask",mask);
+            // imshow("test",subMat_Fire);
             waitKey(40);
-            // imwrite("./pic1/"+to_string(count)+".jpg",src);
+            imwrite("./pic1/"+to_string(count)+".jpg",src);
         }
         
         src_gray.copyTo(lastFrame);
