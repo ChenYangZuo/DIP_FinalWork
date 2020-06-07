@@ -1,0 +1,4 @@
+*.o
+*.exe
+/pic/*.jpg
+/pic1/*.jpg
