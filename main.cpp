@@ -10,19 +10,47 @@
 1.视频差分√
 2.二值化√
 3.连通域√
-4.拟合
-5.绘图
+4.拟合√
+5.绘图√
 ---------------------------------------------------------------*/
 
 using namespace cv;
 using namespace std;
+
+//This function is not original
+void polynomial_curve_fit(std::vector<cv::Point>& key_point, int n, cv::Mat& A)
+{
+	int N = key_point.size();
+
+	//构造矩阵X
+	cv::Mat X = cv::Mat::zeros(n + 1, n + 1, CV_64FC1);
+	for (int i = 0; i < n + 1; i++){
+		for (int j = 0; j < n + 1; j++){
+			for (int k = 0; k < N; k++){
+				X.at<double>(i, j) = X.at<double>(i, j) + std::pow(key_point[k].x, i + j);
+			}
+		}
+	}
+ 
+	//构造矩阵Y
+	cv::Mat Y = cv::Mat::zeros(n + 1, 1, CV_64FC1);
+	for (int i = 0; i < n + 1; i++){
+		for (int k = 0; k < N; k++){
+			Y.at<double>(i, 0) = Y.at<double>(i, 0) + std::pow(key_point[k].x, i) * key_point[k].y;
+		}
+	}
+ 
+	A = cv::Mat::zeros(n + 1, 1, CV_64FC1);
+	//求解矩阵A
+	cv::solve(X, Y, A, cv::DECOMP_LU);
+}
 
 int main(){
     cout << "Hello,World!" << endl;
 
     VideoCapture cap("./src.mp4");
 
-    Mat src,src_gray,src_hsv,src_sub_Fire;
+    Mat src,src_gray,src_hsv;
     Mat bgMat,subMat,subMat_b,subMat_Fire,subMat_b_Fire;
     Mat mask,mask1,mask2;
     Mat labelsMat,labelsMat2;//标签号
@@ -31,10 +59,12 @@ int main(){
     Mat lastFrame;
     Mat kernel = getStructuringElement(0,Size(3,3));
     Mat kernel1 = getStructuringElement(0,Size(7,7));
+    Mat A;
 
-    vector<vector<Point>> dst;
+    vector<Point> points;
 
     int count = 0;
+    int CNT = 0;
     int fps = (int)cap.get(CAP_PROP_FPS);
     int totalFps = (int)cap.get(CAP_PROP_FRAME_COUNT);
     int frame_width = cap.get(CAP_PROP_FRAME_WIDTH);
@@ -57,10 +87,12 @@ int main(){
         
         if(count == 0){
             src_gray.copyTo(bgMat);
+            src.copyTo(lastFrame);
         }
         else{
             absdiff(src_gray,bgMat,subMat);//对视频首帧视频差分
-            absdiff(src_gray,lastFrame,subMat_Fire);//对视频前帧视频差分
+            absdiff(src,lastFrame,subMat_Fire);//对视频前帧视频差分
+            cvtColor(subMat_Fire,subMat_Fire,COLOR_BGR2GRAY);
 
             //对差分后的图像二值化处理
             threshold(subMat,subMat_b,50,255,CV_THRESH_BINARY);
@@ -68,8 +100,9 @@ int main(){
 
             //二值图膨胀运算
             morphologyEx(subMat_b,subMat_b,1,kernel);
-            morphologyEx(subMat_b_Fire,subMat_b_Fire,1,kernel1);
+            morphologyEx(subMat_b_Fire,subMat_b_Fire,1,kernel);
 
+            Mat src_sub_Fire;
             src.copyTo(src_sub_Fire,subMat_b_Fire);//识别火焰所使用的差分图
 
             //---------------------火焰识别---------------------
@@ -108,34 +141,36 @@ int main(){
                     box.x = 180;
                     box.y = 35;
                     rectangle(src,box,CV_RGB(0,255,0),1,8,0);
-                    double k = box.height / pow(box.width,2);
-                    // cout << "height:" <<box.height << endl;
-                    // cout << "width:" << box.width << endl;
-                    // cout << "k:" << k << endl;
-                    // cout << "---------------------"<< endl;
-                    for(int x=0;x<frame_width-box.x;x++){
-                        int y = box.y + k*pow(x,2);
-                        // cout << "Y:" << y << endl;
-                        if(y > frame_height){
-                            break;
-                        }
-                        else{
-                            circle(src,Point(box.x + x,y),1,Scalar(255, 0, 0),1);
-                        }   
+
+                    CNT++;
+                    if(CNT<160){
+                        points.push_back(cv::Point(box.width+180,box.height+35));
                     }
+                    
+                    polynomial_curve_fit(points, 2, A);
+                    vector<Point> points_fitted;
+                    for (int x = 180; x < 500; x++)
+                    {
+                        double y = A.at<double>(0, 0) + A.at<double>(1, 0)*x + A.at<double>(2, 0)*pow(x, 2);
+                        points_fitted.push_back(cv::Point(x, y));
+                    }
+                    polylines(src, points_fitted, false, cv::Scalar(0, 255, 255), 1, 8, 0);
+
                 }
             }
             //---------------------水流识别---------------------
 
             
             imshow("src",src);
-            // imshow("redMask",mask);
-            // imshow("test",subMat_Fire);
+            // imshow("subMat_Fire",subMat_Fire);
+            // imshow("subMat_b_Fire",subMat_b_Fire);
+            // imshow("src_sub_Fire",src_sub_Fire);
+            // imshow("mask",mask);
+            // imshow("src_hsv",src_hsv);
             waitKey(40);
-            imwrite("./pic1/"+to_string(count)+".jpg",src);
         }
         
-        src_gray.copyTo(lastFrame);
+//        src_gray.copyTo(lastFrame);
         count++;
     }
 
