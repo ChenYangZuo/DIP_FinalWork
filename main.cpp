@@ -1,18 +1,6 @@
 #include <opencv2/opencv.hpp>
 #include <iostream>
 #include <opencv2/imgproc/types_c.h>
-/*---------------------------------------------------------------
-在连续的视频中对火焰及水柱的轨迹检测，效果如图。
-提示:火焰可利用亮度和颜色,水柱的轨迹需要先用背景差分获得水柱的连通域，然
-后利用连通域上的像素点进行曲线的拟合，水枪的位置视为已知，即可以手动活动
-坐标。
------------------------------------------------------------------
-1.视频差分√
-2.二值化√
-3.连通域√
-4.拟合√
-5.绘图√
----------------------------------------------------------------*/
 
 using namespace cv;
 using namespace std;
@@ -162,15 +150,9 @@ int main(){
 
             
             imshow("src",src);
-            // imshow("subMat_Fire",subMat_Fire);
-            // imshow("subMat_b_Fire",subMat_b_Fire);
-            // imshow("src_sub_Fire",src_sub_Fire);
-            // imshow("mask",mask);
-            // imshow("src_hsv",src_hsv);
             waitKey(40);
         }
         
-//        src_gray.copyTo(lastFrame);
         count++;
     }
 
